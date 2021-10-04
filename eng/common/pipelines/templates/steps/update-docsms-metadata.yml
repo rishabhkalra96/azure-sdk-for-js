@@ -2,6 +2,9 @@ parameters:
   - name: PackageInfoLocations
     type: object
     default: []
+  - name: PackageInfoPath
+    type: string
+    default: ''
   - name: RepoId
     type: string
     default: $(Build.Repository.Name)
@@ -76,12 +79,25 @@ steps:
 
 - pwsh: |
     $packageInfoJson = '${{ convertToJson(parameters.PackageInfoLocations) }}'.Trim('"')
-    $packageInfoLocations = ConvertFrom-Json $packageInfoJson
-    ${{ parameters.ScriptDirectory }}/Update-DocsMsMetadata.ps1 `
-      -PackageInfoJsonLocations $packageInfoLocations `
-      -DocRepoLocation "$(DocRepoLocation)" `
-      -Language '${{parameters.Language}}' `
-      -RepoId '${{ parameters.RepoId }}'
+    if ('${{parameters.PackageInfoPath}}') {
+      ${{ parameters.ScriptDirectory }}/Update-DocsMsMetadata.ps1 `
+        -PackageInfoJsonPath ${{parameters.PackageInfoPath}} `
+        -DocRepoLocation "$(DocRepoLocation)" `
+        -Language '${{parameters.Language}}' `
+        -RepoId '${{ parameters.RepoId }}'
+    }
+    elseif($packageInfoJson) {
+      $packageInfoLocations = ConvertFrom-Json $packageInfoJson
+      ${{ parameters.ScriptDirectory }}/Update-DocsMsMetadata.ps1 `
+        -PackageInfoJsonLocations $packageInfoLocations `
+        -DocRepoLocation "$(DocRepoLocation)" `
+        -Language '${{parameters.Language}}' `
+        -RepoId '${{ parameters.RepoId }}'
+    }
+    else{
+      Write-Host "It is missing either PackageInfoPath or PackageInfo json files information."
+      exit 0
+    }
   displayName: Apply Documentation Updates
 
 - template: /eng/common/pipelines/templates/steps/git-push-changes.yml
